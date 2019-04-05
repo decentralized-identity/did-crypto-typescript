@@ -76,8 +76,3 @@ Install the library into your project with npm:
 npm install @decentralized-identity/did-crypto-typescript
 ```
 
-## Examples
-```
-// 
-```
-
