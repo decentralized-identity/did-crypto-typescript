@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 
 import base64url from 'base64url';
 import { KeyExport } from './KeyExport';
@@ -76,20 +72,6 @@ export default class DidKey {
   }
 
   /**
-   * Gets the key use.
-   */
-  public get keyUse (): KeyUse {
-    return this._keyUse;
-  }
-
-  /**
-   * Gets the key type.
-   */
-  public get keyType (): KeyType {
-    return this._keyType;
-  }
-
-  /**
    * Gets the intended algorithm to use for the key.
    */
   public get algorithm (): any {
@@ -101,6 +83,20 @@ export default class DidKey {
    */
   public get exportable (): boolean {
     return this._exportable;
+  }
+
+  /**
+   * Gets the key type.
+   */
+  public get keyType (): KeyType {
+    return this._keyType;
+  }
+
+  /**
+   * Gets the key use.
+   */
+  public get keyUse (): KeyUse {
+    return this._keyUse;
   }
 
   /**
