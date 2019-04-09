@@ -1,26 +1,33 @@
-// import DidKey from '../lib/DidKey';
-// import { KeyExport } from '../lib/KeyExport';
+import DidKey from '../lib/DidKey';
+
+const originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
+
+beforeEach(() => {
+  jasmine.DEFAULT_TIMEOUT_INTERVAL = 5000;
+});
+
+afterEach(() => {
+  jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+});
+
+afterAll(() => {
+  console.log('Browser test finished');
+});
 
 describe('DidKey in browser', () => {
-
-  const originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
-
-  beforeEach(() => {
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
-  });
-
-  afterEach(() => {
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
-  });
-
-  describe('constructed with an Octet key', () => {
-    it('should generate a symmetric key.', async (done) => {
-      // const alg = { name: 'hmac', hash: 'SHA-256' };
-      // const didKey = new DidKey(window.crypto, alg, null, true);
-      // const jwk = await didKey.getJwkKey(KeyExport.Secret);
-      let jwk = 5;
-      expect(jwk).toBeDefined();
-      done();
-    });
+  it('should sign/verify with a symmetric key.', async (done) => {
+    const alg = { name: 'hmac', hash: 'SHA-256' };
+    console.log(alg);
+    const didKey = new DidKey(window.crypto, alg, null, true);
+    console.log(didKey);
+    expect(didKey).toBeDefined();
+    const data = Buffer.from('abcdefg');
+    console.log('before signature');
+    const signature = await didKey.sign(data);
+    console.log('after signature with signature: ' + signature); 
+    done();
+    //const success = await didKey.verify(data, signature);
+    //console.log(`signature results: ${success}`);
+    //expect(success).toEqual(true);
   });
 });

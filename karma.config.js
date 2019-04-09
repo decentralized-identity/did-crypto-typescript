@@ -1,13 +1,15 @@
+var webpackConfig = require('./webpack.config');
+
 module.exports = function(config) { 
   config.set({
 
-      frameworks: ["jasmine", "karma-typescript"],
+      frameworks: ["jasmine"],
 
       files: [
-        //{ pattern: "tests/**/*.ts" },
-        //{ pattern: "lib//index.ts", served: false, included:false },
-        { pattern: "dist/lib/**/*.js", served: true },
-        { pattern: "tests/DidKey.spec.browser.ts", served: true, watched: true }
+        { pattern: "tests/**/*spec.browser.ts" , served: true, watched: true},
+        { pattern: "lib//index.ts", served: false, included:false },
+        { pattern: "lib/**/*.ts", served: true, watched: true },
+        //{ pattern: "tests/DidKey.spec.browser.js", included: true, watched: true }
       ],
 
       "exclude": [
@@ -15,36 +17,55 @@ module.exports = function(config) {
     ],
 
       preprocessors: {
-        "tests/**/*spec.browser.ts": ["karma-typescript"]
+        "tests/**/*.ts": ["webpack"],
+        "lib/**/*.ts": ["webpack"]
     },
-
-      karmaTypescriptConfig: {
-          compilerOptions: {
-              module: "umd",
-              outDir: "./dist",
-              moduleResolution: "node",   
-              strict: true, 
-              sourceMap: true,
-              target: "es2018",
-              lib: ["DOM", "es2018"],
-              esModuleInterop: true      
-          },
-          include: ["tests/**/*.ts", "lib/**/*.ts"],
-          reports:
-          {
-              "html": "coverage",
-              "text-summary": ""
-          }
-      },
-      
-      mime: {
-        'text/x-typescript': ['ts', 'tsx']
+    webpack: {
+      module: webpackConfig.module,
+      resolve: webpackConfig.resolve
+    },
+    reporters: ['progress'],
+    port: 9876,
+    colors: true,
+    logLevel: config.LOG_INFO,
+    autoWatch: true,
+    browsers: ['ChromeHeadless'],
+    singleRun: false,
+    concurrency: Infinity,      
+    customLaunchers: {
+        Chrome_with_debugging: {
+        base: 'Chrome',
+        flags: ['--remote-debugging-port=9222'],
+        debug: true
+        }
       },
 
-      reporters: ["dots", "karma-typescript"],
-
-      browsers: ["Chrome"],
-
-      singleRun: true
+    logLevel: 'error',
+    mime: {
+      'text/x-typescript': ['ts', 'tsx']
+    },
+    karmaTypescriptConfig: {
+      compilerOptions: {
+          extendedDiagnostics: true,  
+          allowJs: true, 
+          outDir: "./dist",
+          moduleResolution: "node",   
+          strict: false, 
+          sourceMap: true,
+          module: "commonjs",
+          "target": "ESNEXT",
+          lib: ["DOM", "ESNext"],
+          esModuleInterop: true      
+      },
+      include: ["tests/**/*.ts", "lib/**/*.ts"],
+      reports:
+      {
+          "html": "coverage",
+          "text-summary": ""
+      },
+      bundlerOptions: {
+      entrypoints: /tests.*\.ts$/
+      }    
+    },
   });
 };

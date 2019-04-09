@@ -167,11 +167,12 @@ export default class DidKey {
     await this.getJwkKey(keyExport);
     const keyObject = this.getKeyObject(keyId);
     if (keyObject) {
-      return this._crypto.subtle.sign(
+      const signature = await this._crypto.subtle.sign(
         DidKey.normalizeAlgorithm(this._algorithm),
         this.isKeyPair ? (keyObject as any).privateKey : (keyObject as any).secretKey,
         data
       );
+      return signature;
     } else {
       throw new Error(`A private key with id of '${keyId}' required to validate the signature cannot be found.`);
     }
@@ -194,7 +195,9 @@ export default class DidKey {
       this._exportable,
       this.getKeyOperations(this.keyUse)
     );
-    return this._crypto.subtle.verify(DidKey.normalizeAlgorithm(this._algorithm), keyObject, signature, data);
+    const success = await this._crypto.subtle.verify(DidKey.normalizeAlgorithm(this._algorithm), keyObject, signature, data);
+    console.log(`result after signature in didkey ${success}`);
+    return success;
   }
 
   /**
