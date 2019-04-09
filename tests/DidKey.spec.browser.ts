@@ -24,10 +24,10 @@ describe('DidKey in browser', () => {
     const data = Buffer.from('abcdefg');
     console.log('before signature');
     const signature = await didKey.sign(data);
-    console.log('after signature with signature: ' + signature); 
+    console.log('after signature with signature: ' + signature);
     done();
-    //const success = await didKey.verify(data, signature);
-    //console.log(`signature results: ${success}`);
-    //expect(success).toEqual(true);
+    // const success = await didKey.verify(data, signature);
+    // console.log(`signature results: ${success}`);
+    // expect(success).toEqual(true);
   });
 });
