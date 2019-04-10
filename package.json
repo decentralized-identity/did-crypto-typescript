@@ -6,6 +6,8 @@
     "precommit": "npm run lint",
     "build": "tsc",
     "test": "nyc jasmine-ts --config=./tests/jasmine.json",
+    "test-browser": "karma start karma.config.js",
+    "debug-browser": "karma start karma.config.js  --browsers Chrome_with_debugging  --single-run true",
     "lint": "tslint --fix --project .",
     "check-lint": "tslint --project ."
   },
@@ -23,7 +25,7 @@
     "clone": "^2.1.2",
     "elliptic": "^6.4.1",
     "install": "^0.12.2",
-    "node-webcrypto-ossl": "1.0.39",
+    "node-webcrypto-ossl": "^1.0.39",
     "npm": "^6.8.0"
   },
   "devDependencies": {
@@ -36,6 +38,14 @@
     "jasmine-reporters": "^2.3.2",
     "jasmine-spec-reporter": "^4.2.1",
     "jasmine-ts": "^0.2.1",
+    "karma": "^4.0.1",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-jasmine": "^2.0.1",
+    "karma-typescript-preprocessor2": "^1.2.1",
+    "karma-webpack": "^2.0.3",
+    "awesome-typescript-loader": "^3.1.2",
+    "ts-loader": "^2.0.2",
+    "webpack": "^2.3.0",
     "node-fetch": "^2.3.0",
     "nyc": "^13.3.0",
     "source-map-support": "^0.5.9",

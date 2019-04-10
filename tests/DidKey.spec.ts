@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 
 import base64url from 'base64url';
 import WebCrypto from 'node-webcrypto-ossl';
@@ -76,6 +72,28 @@ describe('DidKey', () => {
       });
       done();
     });
+    it('should set a symmetric key.', (done) => {
+      crytoObjects.forEach(async (cryptoObj) => {
+        const alg = { name: 'hmac', hash: 'SHA-256' };
+        const jwk = {
+          kty: 'oct',
+          k: 'AABE',
+          use: 'sig'
+        };
+        let didKey = new DidKey(cryptoObj.crypto, alg, jwk, true);
+        expect(KeyType.Oct).toEqual(didKey.keyType);
+        expect(KeyUse.Signature).toEqual(didKey.keyUse);
+        expect(alg).toEqual(didKey.algorithm);
+        expect(true).toEqual(didKey.exportable);
+
+        let key = await didKey.getJwkKey(KeyExport.Secret);
+        expect(key).not.toBeNull();
+        expect(key.kty).toBe('oct');
+        expect(key.kid).toBeDefined();
+        expect(key.k).toEqual('AABE');
+      });
+      done();
+    });
 
     it('should throw on unsupported algorithm ', () => {
       expect(() => new DidKey(webCryptoClass, { name: 'xxx' }, null)).toThrowError(`The algorithm 'xxx' is not supported`);
@@ -116,27 +134,16 @@ describe('DidKey', () => {
       }
     });
 
-    it('should throw when key object is null', async (done) => {
-      try {
-        const didKey = new DidKey(webCryptoClass, hmacAlgorithm, null, true);
-        const did: any = didKey as any;
-        await did.getJwkKeyFromKeyObject(KeyExport.Secret, null);
-      } catch (error) {
-        expect(error.message).toBe('keyObject argument in getJwkKey cannot be null');
-        done();
-      }
-    });
+    it('should create kid when not provided', async (done) => {
+      const didKey = new DidKey(webCryptoClass, hmacAlgorithm, { kty: 'oct', k: 'AAEE' }, true);
+      const did: any = didKey as any;
+      did._keyType = 10;
+      const jwk = await didKey.getJwkKey(KeyExport.Secret);
+      expect(jwk.kid).toBeDefined();
+      expect(jwk.kty).toEqual('oct');
+      expect(jwk.k).toEqual('AAEE');
 
-    it('should throw when getJwkKey passed unsupported key type', async (done) => {
-      try {
-        const didKey = new DidKey(webCryptoClass, hmacAlgorithm, null, true);
-        const did: any = didKey as any;
-        did._keyType = 10;
-        await did.getJwkKeyFromKeyObject(KeyExport.Secret, 1);
-      } catch (error) {
-        expect(error.message).toBe('DidKey:getJwkKey->10 is not supported');
-        done();
-      }
+      done();
     });
 
     it('should create and verify a HMAC-SHA256 signature', async (done) => {
@@ -176,8 +183,10 @@ describe('DidKey', () => {
       crytoObjects.forEach(async (cryptoObj) => {
         const alg = { name: 'hmac', hash: 'SHA-256' };
         const didKey = new DidKey(cryptoObj.crypto, alg, Buffer.from(sampleKey), true);
-        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Signature);
-        expect(operations).toEqual([ KeyOperation.Sign, KeyOperation.Verify ]);
+        let operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Signature, KeyExport.Private);
+        expect(operations).toEqual([ KeyOperation.Sign ]);
+        operations = didKey.getKeyOperations(KeyUse.Signature, KeyExport.Public);
+        expect(operations).toEqual([ KeyOperation.Verify ]);
       });
     });
 
@@ -185,13 +194,28 @@ describe('DidKey', () => {
       crytoObjects.forEach(async (cryptoObj) => {
         const alg = { name: 'hmac', hash: 'SHA-256' };
         const didKey = new DidKey(cryptoObj.crypto, alg, Buffer.from(sampleKey), true);
-        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Encryption);
+        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Encryption, KeyExport.Secret);
         expect(operations).toEqual([ KeyOperation.Encrypt, KeyOperation.Decrypt ]);
       });
     });
   });
 
   describe('constructed with an ECDSA key', () => {
+    it('should set secp256k1 key', async (done) => {
+      crytoObjects.forEach(async (cryptoObj) => {
+        const alg = { name: 'ECDSA', namedCurve: 'P-256K', hash: { name: 'SHA-256' } };
+        const didKey = new DidKey(cryptoObj.crypto, alg, null, true);
+        const jwk = await didKey.getJwkKey(KeyExport.Private);
+        jwk.use = 'sig';
+        const importedKey = new DidKey(cryptoObj.crypto, alg, jwk, true);
+        const importedJwk = await importedKey.getJwkKey(KeyExport.Private);
+        expect(jwk.d).toEqual(importedJwk.d);
+        expect(jwk.kty).toEqual(importedJwk.kty);
+        expect('sig').toEqual(importedJwk.use);
+      });
+      done();
+    });
+
     it('should sign and verify using a secp256k1 key', async (done) => {
       crytoObjects.forEach(async (cryptoObj) => {
         const alg = { name: 'ECDSA', namedCurve: 'P-256K', hash: { name: 'SHA-256' } };
@@ -203,21 +227,6 @@ describe('DidKey', () => {
         expect(correct).toBeTruthy();
       });
       done();
-    });
-
-    it('should throw when no private key', async (done) => {
-      crytoObjects.forEach(async (cryptoObj) => {
-        const alg = { name: 'ECDSA', namedCurve: 'P-256K', hash: { name: 'SHA-256' } };
-        const didKey = new DidKey(cryptoObj.crypto, alg, null, true);
-        spyOn(didKey, 'getKeyObject').and.returnValue(undefined);
-        const data = 'abcdefghij';
-        try {
-          await didKey.sign(Buffer.from(data));
-        } catch (error) {
-          expect(error.message).toEqual(`A private key with id of 'EC-sig-private' required to validate the signature cannot be found.`);
-          done();
-        }
-      });
     });
 
     it('should sign and verify with an imported secp256k1 key.', async (done) => {
@@ -262,7 +271,7 @@ describe('DidKey', () => {
       crytoObjects.forEach(async (cryptoObj) => {
         const alg = { name: 'ECDSA', namedCurve: 'P-256K', hash: { name: 'SHA-256' } };
         const didKey = new DidKey(cryptoObj.crypto, alg, null, true);
-        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Encryption);
+        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Encryption, KeyExport.Private);
         expect(operations).toEqual([ KeyOperation.DeriveKey, KeyOperation.DeriveBits ]);
       });
     });

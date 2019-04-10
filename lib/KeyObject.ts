@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 
 import { KeyType } from './KeyType';
 
@@ -18,9 +14,6 @@ export default class KeyObject {
   // The private key
   private _privateKey: any;
 
-  // The secret key
-  private _secretKey: any;
-
   // The key object. Can contain a symmetric key, key pair, private or public key
   private _keyObject: any;
 
@@ -36,11 +29,6 @@ export default class KeyObject {
     this._keyType = keyType;
     this._keyObject = keyObject;
     this._isKeyPair = false;
-
-    if (!this.isPublicKeyCrypto) {
-      this._secretKey = keyObject;
-      return;
-    }
 
     if (this._keyObject.publicKey && this._keyObject.privateKey) {
       this._isKeyPair = true;
@@ -74,13 +62,7 @@ export default class KeyObject {
    * Gets a value indicating whether the key is a public key crypto scheme
    */
   public get isPublicKeyCrypto (): boolean {
-    switch (this._keyType) {
-      case KeyType.EC:
-      case KeyType.RSA:
-        return true;
-      case KeyType.Oct:
-        return false;
-    }
+    return true;
   }
 
   /**
@@ -99,13 +81,6 @@ export default class KeyObject {
    */
   public get isKeyPair (): boolean {
     return this._isKeyPair;
-  }
-
-  /**
-   * Gets secret key
-   */
-  public get secretKey (): any {
-    return this._secretKey;
   }
 
   /**
