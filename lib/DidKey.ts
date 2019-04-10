@@ -154,6 +154,7 @@ export default class DidKey {
     let jwk = await this.getJwkKey(keyExport);
     jwk = DidKey.normalizeJwk(jwk);
     const operations = [KeyOperation.Sign];
+    jwk.key_ops = operations;
     const alg = DidKey.normalizeAlgorithm(this._algorithm);
     const keyObject: any = await this._crypto.subtle.importKey(
       'jwk',
@@ -178,6 +179,7 @@ export default class DidKey {
     let jwk = await this.getJwkKey(keyExport);
     jwk = DidKey.normalizeJwk(jwk);
     const operations = [KeyOperation.Verify];
+    jwk.key_ops = operations;
     const alg = DidKey.normalizeAlgorithm(this._algorithm);
     const keyObject: any = await this._crypto.subtle.importKey(
       'jwk',
