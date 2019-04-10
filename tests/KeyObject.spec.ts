@@ -17,11 +17,16 @@ describe('KeyObject', () => {
   it('should set the right properties for the symmetric key.', async (done) => {
     const alg = { name: 'hmac', hash: 'SHA-256' };
     const key = await (crypto.subtle.generateKey(alg, true, [ 'sign' ]) as Promise<any>);
-    const keyObject: KeyObject = new KeyObject(KeyType.Oct, key);
-    expect(keyObject.keyType).toEqual(KeyType.Oct);
-    expect(keyObject.isKeyPair).toBeFalsy();
-    expect(keyObject.isPrivateKey).toBeFalsy();
-    expect(keyObject.isPublicKeyCrypto).toBeFalsy();
+    let throwed = false;
+    try {
+      // tslint:disable-next-line:no-unused-expression
+      new KeyObject(KeyType.Oct, key);
+      fail('Must throw');
+    } catch (err) {
+      throwed = true;
+      expect(`Key with type 'oct' is expected to have the type public or private`).toEqual(err.message);
+    }
+    expect(throwed).toEqual(true);
     done();
   });
 

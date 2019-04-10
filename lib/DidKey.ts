@@ -12,6 +12,7 @@ const clone = require('clone');
 // Name curves
 const CURVE_P256K = 'P-256K';
 const CURVE_K256 = 'K-256';
+const TEMPORARY_KID = '#key1';
 
 /**
  * Class to model a key
@@ -37,9 +38,6 @@ export default class DidKey {
 
   // Store for jwk keys in different formats. This is the format returned by exportKey
   private _jwkKeys: Map<string, object> = new Map<string, object>();
-
-  // Store key objects. This is the format returned by generateKey
-  private _keyObjects: Map<string, object> = new Map<string, object>();
 
   // Set of master keys
   private _didMasterKeys: MasterKey[] = [];
@@ -105,59 +103,46 @@ export default class DidKey {
   public async getJwkKey (keyExport: KeyExport): Promise<any> {
     // check if key is already cached
     const keyId = this.getKeyIdentifier(this.keyType, this.keyUse, keyExport);
-    const jwkKey = this.getJwkKeyFromCache(keyId);
+    let jwkKey: any = this.getJwkKeyFromCache(keyId);
     if (jwkKey) {
       // Return the key if it already exists
       return jwkKey;
     }
 
     // Get the key or generate the key if needed
-    const keyObject: KeyObject = await this.getOrGenerateKey(keyExport);
-    // Cache the key object
-    this.cacheKeyObject(keyId, keyObject);
-    // export to jwk format
-    const jwk: any = await this.getJwkKeyFromKeyObject(keyExport, keyObject);
+    jwkKey = await this.getOrGenerateKey(keyExport);
+
+    // Normalize curve
+    if (jwkKey.crv) {
+      jwkKey.crv = this._algorithm.namedCurve;
+    }
 
     // Save jwk format
-    this.cacheJwkKey(keyId, jwk);
+    this.cacheJwkKey(keyId, jwkKey);
 
     // Check to save public key
     if (this.isKeyPair && keyExport === KeyExport.Private) {
       // Save only public key
       const jwkPublic: any = {};
-      jwkPublic.kty = jwk.kty;
-      if (!jwk.kid) {
-        jwk.kid = jwkPublic.kid = '#key1';
-      }
+      jwkPublic.kty = jwkKey.kty;
 
-      if (jwk.use) {
-        jwkPublic.use = jwk.use;
+      if (jwkKey.use) {
+        jwkPublic.use = jwkKey.use;
       }
       if (this.keyType === KeyType.RSA) {
-        jwkPublic.e = jwk.e;
-        jwkPublic.n = jwk.n;
+        jwkPublic.e = jwkKey.e;
+        jwkPublic.n = jwkKey.n;
       } else {
         jwkPublic.crv = this._algorithm.namedCurve;
-        jwkPublic.x = jwk.x;
-        jwkPublic.y = jwk.y;
+        jwkPublic.x = jwkKey.x;
+        jwkPublic.y = jwkKey.y;
       }
 
       // Save public key
       const keyIdPublic = this.getKeyIdentifier(this.keyType, this.keyUse, KeyExport.Public);
       this.cacheJwkKey(keyIdPublic, jwkPublic);
-      const key = DidKey.normalizeJwk(jwkPublic);
-      const alg = DidKey.normalizeAlgorithm(this._algorithm);
-      const operations = this.getKeyOperations(this.keyUse, KeyExport.Public);
-      const keyObject: any = await this._crypto.subtle.importKey(
-        'jwk',
-        key,
-        alg,
-        this._exportable,
-        operations
-      );
-      this.cacheKeyObject(keyIdPublic, new KeyObject(this.keyType, keyObject));
     }
-    return jwk;
+    return jwkKey;
   }
 
   /**
@@ -166,20 +151,20 @@ export default class DidKey {
    */
   public async sign (data: Buffer): Promise<ArrayBuffer> {
     const keyExport = this.isKeyPair ? KeyExport.Private : KeyExport.Secret;
-    const keyId = this.getKeyIdentifier(this.keyType, this.keyUse, keyExport);
-    // console.log(`Sign data: ${base64url(data)} with ${keyId}`);
-    await this.getJwkKey(keyExport);
-    const keyObject = this.getKeyObject(keyId);
-    if (keyObject) {
-      const signature = await this._crypto.subtle.sign(
-        DidKey.normalizeAlgorithm(this._algorithm),
-        this.isKeyPair ? (keyObject as any).privateKey : (keyObject as any).secretKey,
-        data
-      );
-      return signature;
-    } else {
-      throw new Error(`A private key with id of '${keyId}' required to validate the signature cannot be found.`);
-    }
+    let jwk = await this.getJwkKey(keyExport);
+    jwk = DidKey.normalizeJwk(jwk);
+    const operations = [KeyOperation.Sign];
+    const alg = DidKey.normalizeAlgorithm(this._algorithm);
+    const keyObject: any = await this._crypto.subtle.importKey(
+      'jwk',
+      jwk,
+      alg,
+      this._exportable,
+     operations
+    );
+
+    const signature = await this._crypto.subtle.sign(alg, keyObject, data);
+    return signature;
   }
 
   /**
@@ -278,16 +263,6 @@ export default class DidKey {
   }
 
   /**
-   * Returns the key object for the specified
-   * key identifier.
-   * @param keyId of the key object to return
-   */
-  public getKeyObject (keyId: string): object | undefined {
-    // TODO add decryption with a system key
-    return this._keyObjects.get(keyId);
-  }
-
-  /**
    * Returns an array of key operations.
    */
   public getKeyOperations (keyUse: KeyUse, keyExport: KeyExport): Array<KeyOperation> {
@@ -355,52 +330,6 @@ export default class DidKey {
     return mk;
   }
 
-  // Transform the KeyObject into a JWK key
-  private async getJwkKeyFromKeyObject (keyExport: KeyExport, keyObject: KeyObject): Promise<any> {
-    if (!keyObject) {
-      throw new Error('keyObject argument in getJwkKey cannot be null');
-    }
-
-    switch (this._keyType) {
-      case KeyType.Oct:
-        return this.getOctJwkKey(keyObject);
-
-      case KeyType.RSA:
-      case KeyType.EC:
-        return this.getKeyPairJwkKey(keyExport, keyObject);
-    }
-
-    throw new Error(`DidKey:getJwkKey->${this._keyType} is not supported`);
-  }
-
-  // Transform the oct KeyObject into a JWK key.
-  private async getOctJwkKey (keyObject: KeyObject): Promise<any> {
-    const jwk = await this._crypto.subtle.exportKey('jwk', keyObject.secretKey);
-    if (!jwk.kid) {
-      jwk.kid = '#kid1';
-    }
-    return jwk;
-  }
-
-  // Transform the key pair KeyObject into a JWK key.
-  private async getKeyPairJwkKey (keyExport: KeyExport, keyObject: KeyObject): Promise<any> {
-    let nativeKey = undefined;
-    switch (keyExport) {
-      case KeyExport.Private:
-        nativeKey = keyObject.privateKey;
-        break;
-      case KeyExport.Public:
-        nativeKey = keyObject.publicKey;
-        break;
-    }
-
-    let jwk = await this._crypto.subtle.exportKey('jwk', nativeKey);
-    if (jwk.kty === 'EC') {
-      jwk.crv = this._algorithm.namedCurve;
-    }
-    return jwk;
-  }
-
   private getKeyIdentifier (keyType: KeyType, keyUse: KeyUse, keyExport: KeyExport): string {
     return `${keyType}-${keyUse}-${keyExport}`;
   }
@@ -410,21 +339,15 @@ export default class DidKey {
     return this._jwkKeys.get(keyId);
   }
 
-  private cacheJwkKey (keyId: string, jwk: object): boolean {
+  private cacheJwkKey (keyId: string, jwk: any): boolean {
     // TODO add encryption with a system key
     this._jwkKeys.set(keyId, jwk);
     return true;
   }
 
-  private cacheKeyObject (keyId: string, jwk: object): boolean {
-    // TODO add encryption with a system key
-    this._keyObjects.set(keyId, jwk);
-    return true;
-  }
-
   // Get the key or generate the key if needed
   // Return a keyObject
-  private async getOrGenerateKey (keyExport: KeyExport): Promise<KeyObject> {
+  private async getOrGenerateKey (keyExport: KeyExport): Promise<any> {
     if (this._rawKey === null) {
       // indicate key is generated and raw key was not set by caller
       this._rawKey = undefined;
@@ -443,7 +366,7 @@ export default class DidKey {
   }
 
   // Generate KeyObject from raw key
-  private async setFromRawKey (key: any, keyExport: KeyExport): Promise<KeyObject> {
+  private async setFromRawKey (key: any, keyExport: KeyExport): Promise<any> {
     if (!key) {
       throw new Error('Key must be defined');
     }
@@ -452,44 +375,63 @@ export default class DidKey {
     if (!key.kty) {
       jwkKey = {
         kty: 'oct',
-        kid: '#key1',
+        kid: TEMPORARY_KID,
         use: this.keyUse,
         k: base64url(key)
       };
     } else {
       if (!key.kid) {
-        key.kid = '#key1';
+        key.kid = TEMPORARY_KID;
       }
       jwkKey = key;
     }
 
-    const keyObject: KeyObject = await this._crypto.subtle.importKey(
-      'jwk',
-      DidKey.normalizeJwk(jwkKey),
-      DidKey.normalizeAlgorithm(this._algorithm),
-      this._exportable,
-      this.getKeyOperations(this.keyUse, keyExport)
-    );
-    return new KeyObject(this.keyType, keyObject);
+    // cache the key
+    const keyId = this.getKeyIdentifier(this.keyType, this.keyUse, keyExport);
+    this.cacheJwkKey(keyId, jwkKey);
+    return jwkKey;
   }
 
-  // Generate an oct key and return a key object
-  private async generateOctKey (): Promise<KeyObject> {
+  // Generate an oct key and return a jwk key object
+  private async generateOctKey (): Promise<any> {
     const keyObject: KeyObject = await this._crypto.subtle.generateKey(
       DidKey.normalizeAlgorithm(this._algorithm),
       this._exportable,
       this.getKeyOperations(this.keyUse, KeyExport.Secret)
     );
-    return new KeyObject(this.keyType, keyObject);
+
+    const jwk = await this.keyObjectToJwk(keyObject, KeyExport.Secret);
+    return jwk;
   }
 
   // Generate a key pair and return a key object
   private async generateKeyPair (keyExport: KeyExport): Promise<KeyObject> {
+    const alg = DidKey.normalizeAlgorithm(this._algorithm);
+    const operations = this.getKeyOperations(this.keyUse, keyExport);
     const keyObject: KeyObject = await this._crypto.subtle.generateKey(
-      DidKey.normalizeAlgorithm(this._algorithm),
+      alg,
       this._exportable,
-      this.getKeyOperations(this.keyUse, keyExport)
-    );
-    return new KeyObject(this.keyType, keyObject);
+     operations);
+    const jwk = await this.keyObjectToJwk(keyObject, keyExport);
+    return jwk;
+  }
+
+  private async keyObjectToJwk (keyObject: KeyObject, keyExport: KeyExport) {
+    let key = {};
+    if (keyExport === KeyExport.Public) {
+      key = keyObject.publicKey;
+    } else if (keyExport === KeyExport.Private) {
+      key = keyObject.privateKey;
+    } else if (keyExport === KeyExport.Secret) {
+      key = keyObject;
+    }
+    const jwk = await this._crypto.subtle.exportKey(
+      'jwk',
+      key);
+
+    if (!jwk.kid) {
+      jwk.kid = TEMPORARY_KID;
+    }
+    return jwk;
   }
 }

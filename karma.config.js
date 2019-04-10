@@ -13,7 +13,8 @@ module.exports = function(config) {
       ],
 
       "exclude": [
-        "lib/**/*.d.ts"
+        "lib/**/*.d.ts",
+        "/node_modules/**/index.d.ts"
     ],
 
       preprocessors: {
@@ -55,7 +56,8 @@ module.exports = function(config) {
           module: "commonjs",
           "target": "ESNEXT",
           lib: ["DOM", "ESNext"],
-          esModuleInterop: true      
+          esModuleInterop: true,
+          types: ["node"]      
       },
       include: ["tests/**/*.ts", "lib/**/*.ts"],
       reports:
