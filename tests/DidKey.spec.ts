@@ -172,8 +172,10 @@ describe('DidKey', () => {
       crytoObjects.forEach(async (cryptoObj) => {
         const alg = { name: 'hmac', hash: 'SHA-256' };
         const didKey = new DidKey(cryptoObj.crypto, alg, Buffer.from(sampleKey), true);
-        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Signature);
-        expect(operations).toEqual([ KeyOperation.Sign, KeyOperation.Verify ]);
+        let operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Signature, KeyExport.Private);
+        expect(operations).toEqual([ KeyOperation.Sign ]);
+        operations = didKey.getKeyOperations(KeyUse.Signature, KeyExport.Public);
+        expect(operations).toEqual([ KeyOperation.Verify ]);
       });
     });
 
@@ -181,7 +183,7 @@ describe('DidKey', () => {
       crytoObjects.forEach(async (cryptoObj) => {
         const alg = { name: 'hmac', hash: 'SHA-256' };
         const didKey = new DidKey(cryptoObj.crypto, alg, Buffer.from(sampleKey), true);
-        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Encryption);
+        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Encryption, KeyExport.Secret);
         expect(operations).toEqual([ KeyOperation.Encrypt, KeyOperation.Decrypt ]);
       });
     });
@@ -258,7 +260,7 @@ describe('DidKey', () => {
       crytoObjects.forEach(async (cryptoObj) => {
         const alg = { name: 'ECDSA', namedCurve: 'P-256K', hash: { name: 'SHA-256' } };
         const didKey = new DidKey(cryptoObj.crypto, alg, null, true);
-        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Encryption);
+        const operations: Array<KeyOperation> = didKey.getKeyOperations(KeyUse.Encryption, KeyExport.Private);
         expect(operations).toEqual([ KeyOperation.DeriveKey, KeyOperation.DeriveBits ]);
       });
     });

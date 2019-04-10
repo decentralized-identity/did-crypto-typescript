@@ -112,7 +112,7 @@ export default class DidKey {
     }
 
     // Get the key or generate the key if needed
-    const keyObject: KeyObject = await this.getOrGenerateKey();
+    const keyObject: KeyObject = await this.getOrGenerateKey(keyExport);
     // Cache the key object
     this.cacheKeyObject(keyId, keyObject);
     // export to jwk format
@@ -130,8 +130,9 @@ export default class DidKey {
         jwk.kid = jwkPublic.kid = '#key1';
       }
 
-      jwkPublic.use = jwk.use;
-      jwkPublic.key_ops = jwk.key_ops;
+      if (jwk.use) {
+        jwkPublic.use = jwk.use;
+      }
       if (this.keyType === KeyType.RSA) {
         jwkPublic.e = jwk.e;
         jwkPublic.n = jwk.n;
@@ -144,12 +145,15 @@ export default class DidKey {
       // Save public key
       const keyIdPublic = this.getKeyIdentifier(this.keyType, this.keyUse, KeyExport.Public);
       this.cacheJwkKey(keyIdPublic, jwkPublic);
+      const key = DidKey.normalizeJwk(jwkPublic);
+      const alg = DidKey.normalizeAlgorithm(this._algorithm);
+      const operations = this.getKeyOperations(this.keyUse, KeyExport.Public);
       const keyObject: any = await this._crypto.subtle.importKey(
         'jwk',
-        DidKey.normalizeJwk(jwkPublic),
-        DidKey.normalizeAlgorithm(this._algorithm),
+        key,
+        alg,
         this._exportable,
-        this.getKeyOperations(this.keyUse)
+        operations
       );
       this.cacheKeyObject(keyIdPublic, new KeyObject(this.keyType, keyObject));
     }
@@ -186,17 +190,18 @@ export default class DidKey {
   public async verify (data: Buffer, signature: ArrayBuffer): Promise<boolean> {
     // console.log(`Verify data: ${base64url(data)}`);
     const keyExport = this.isKeyPair ? KeyExport.Public : KeyExport.Secret;
-    const jwk = await this.getJwkKey(keyExport);
-    jwk.key_ops = ['verify'];
+    let jwk = await this.getJwkKey(keyExport);
+    jwk = DidKey.normalizeJwk(jwk);
+    const operations = [KeyOperation.Verify];
+    const alg = DidKey.normalizeAlgorithm(this._algorithm);
     const keyObject: any = await this._crypto.subtle.importKey(
       'jwk',
-      DidKey.normalizeJwk(jwk),
-      DidKey.normalizeAlgorithm(this._algorithm),
+      jwk,
+      alg,
       this._exportable,
-      this.getKeyOperations(this.keyUse)
+     operations
     );
-    const success = await this._crypto.subtle.verify(DidKey.normalizeAlgorithm(this._algorithm), keyObject, signature, data);
-    console.log(`result after signature in didkey ${success}`);
+    const success = await this._crypto.subtle.verify(alg, keyObject, signature, data);
     return success;
   }
 
@@ -285,7 +290,7 @@ export default class DidKey {
   /**
    * Returns an array of key operations.
    */
-  public getKeyOperations (keyUse: KeyUse): Array<KeyOperation> {
+  public getKeyOperations (keyUse: KeyUse, keyExport: KeyExport): Array<KeyOperation> {
     switch (keyUse) {
       case KeyUse.Encryption:
         if (this.isKeyPair) {
@@ -295,7 +300,11 @@ export default class DidKey {
         return [KeyOperation.Encrypt, KeyOperation.Decrypt];
 
       case KeyUse.Signature:
-        return [KeyOperation.Sign, KeyOperation.Verify];
+        if (keyExport === KeyExport.Secret || keyExport === KeyExport.Private) {
+          return [KeyOperation.Sign];
+        } else {
+          return [KeyOperation.Verify];
+        }
     }
   }
 
@@ -415,7 +424,7 @@ export default class DidKey {
 
   // Get the key or generate the key if needed
   // Return a keyObject
-  private async getOrGenerateKey (): Promise<KeyObject> {
+  private async getOrGenerateKey (keyExport: KeyExport): Promise<KeyObject> {
     if (this._rawKey === null) {
       // indicate key is generated and raw key was not set by caller
       this._rawKey = undefined;
@@ -424,17 +433,17 @@ export default class DidKey {
       switch (this.keyType) {
         case KeyType.EC:
         case KeyType.RSA:
-          return this.generateKeyPair();
+          return this.generateKeyPair(keyExport);
         case KeyType.Oct:
           return this.generateOctKey();
         default:
           throw new Error(`Key type '${this.keyType}' not supported`);
       }
-    } else return this.setFromRawKey(this._rawKey);
+    } else return this.setFromRawKey(this._rawKey, keyExport);
   }
 
   // Generate KeyObject from raw key
-  private async setFromRawKey (key: any): Promise<KeyObject> {
+  private async setFromRawKey (key: any, keyExport: KeyExport): Promise<KeyObject> {
     if (!key) {
       throw new Error('Key must be defined');
     }
@@ -459,7 +468,7 @@ export default class DidKey {
       DidKey.normalizeJwk(jwkKey),
       DidKey.normalizeAlgorithm(this._algorithm),
       this._exportable,
-      this.getKeyOperations(this.keyUse)
+      this.getKeyOperations(this.keyUse, keyExport)
     );
     return new KeyObject(this.keyType, keyObject);
   }
@@ -469,17 +478,17 @@ export default class DidKey {
     const keyObject: KeyObject = await this._crypto.subtle.generateKey(
       DidKey.normalizeAlgorithm(this._algorithm),
       this._exportable,
-      this.getKeyOperations(this.keyUse)
+      this.getKeyOperations(this.keyUse, KeyExport.Secret)
     );
     return new KeyObject(this.keyType, keyObject);
   }
 
   // Generate a key pair and return a key object
-  private async generateKeyPair (): Promise<KeyObject> {
+  private async generateKeyPair (keyExport: KeyExport): Promise<KeyObject> {
     const keyObject: KeyObject = await this._crypto.subtle.generateKey(
       DidKey.normalizeAlgorithm(this._algorithm),
       this._exportable,
-      this.getKeyOperations(this.keyUse)
+      this.getKeyOperations(this.keyUse, keyExport)
     );
     return new KeyObject(this.keyType, keyObject);
   }
