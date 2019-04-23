@@ -68,4 +68,27 @@ describe('DidKey in browser', () => {
     expect(success).toEqual(true);
     done();
   });
+
+  it('should sign/verify with a pairwise RSA key.', async (done) => {
+    const alg = supportedAlgorithms[1];
+    console.log(`Algorithm: ${JSON.stringify(alg)}`);
+    const didKey = new DidKey(window.crypto, alg, null, true);
+    expect(didKey).toBeDefined();
+    const keyExport = KeyExport.Private;
+    console.log(`Export: ${keyExport}`);
+
+      // Generate pairwise
+    const pairwise = await didKey.generatePairwise(Buffer.from('abcdefghijklmnopqrstuvwxyz'), 'did:ion:1234567890', 'did:ion:mypeer');
+    console.log(pairwise);
+    const pairwiseJwk = await pairwise.getJwkKey(keyExport);
+    console.log(`Pairwise JWK: ${JSON.stringify(pairwiseJwk)}`);
+
+      // Sign and verify
+    const data = Buffer.from('abcdefg');
+    const signature = await pairwise.sign(data);
+    const success = await pairwise.verify(data, signature);
+    console.log(`pairwise signature results: ${success}`);
+    expect(success).toEqual(true);
+    done();
+  });
 });
