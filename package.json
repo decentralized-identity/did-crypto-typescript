@@ -25,7 +25,8 @@
     "clone": "^2.1.2",
     "elliptic": "^6.4.1",
     "install": "^0.12.2",
-    "node-webcrypto-ossl": "^1.0.39"
+    "node-webcrypto-ossl": "^1.0.39",
+    "UserAgent-plugin-secp256k1": "0.1.0"
   },
   "devDependencies": {
     "@types/fetch-mock": "^7.2.3",
