@@ -1,9 +1,9 @@
 
-import WebCrypto from 'node-webcrypto-ossl';
+import { Crypto } from '@peculiar/webcrypto';
 import KeyObject from '../lib/KeyObject';
 import { KeyType } from '../lib/KeyType';
 
-const crypto = new WebCrypto();
+const crypto = new Crypto();
 
 describe('KeyObject', () => {
   it('should throw on construction for invalid key', () => {
@@ -31,9 +31,10 @@ describe('KeyObject', () => {
   });
 
   it('should set the right properties for the EC key.', async (done) => {
-    const alg: any = { name: 'ECDH', namedCurve: 'K-256' };
-    const key = await (crypto.subtle.generateKey(alg, true, [ 'deriveBits' ]) as Promise<any>);
+    const alg: any = { name: 'ECDSA', namedCurve: 'K-256' };
+    const key = await (crypto.subtle.generateKey(alg, true, [ 'sign' ]) as Promise<any>);
     const keyObject: KeyObject = new KeyObject(KeyType.EC, key);
+    expect(keyObject.publicKey).toBeDefined();
     expect(keyObject.keyType).toEqual(KeyType.EC);
     expect(keyObject.isKeyPair).toBeTruthy();
     expect(keyObject.isPrivateKey).toBeTruthy();
@@ -42,10 +43,10 @@ describe('KeyObject', () => {
   });
 
   it('should set the right properties for the imported private key.', async (done) => {
-    const alg: any = { name: 'ECDH', namedCurve: 'K-256' };
-    let key: any = await (crypto.subtle.generateKey(alg, true, [ 'deriveBits' ]) as Promise<any>);
+    const alg: any = { name: 'ECDSA', namedCurve: 'K-256' };
+    let key: any = await (crypto.subtle.generateKey(alg, true, [ 'sign' ]) as Promise<any>);
     const jwkKey: any = await (crypto.subtle.exportKey('jwk', key.privateKey) as Promise<any>);
-    key = await (crypto.subtle.importKey('jwk', jwkKey, alg, true, [ 'deriveBits' ]) as Promise<any>);
+    key = await (crypto.subtle.importKey('jwk', jwkKey, alg, true, [ 'sign' ]) as Promise<any>);
     const keyObject: KeyObject = new KeyObject(KeyType.EC, key);
     expect(keyObject.keyType).toEqual(KeyType.EC);
     expect(keyObject.isKeyPair).toBeFalsy();
@@ -55,10 +56,10 @@ describe('KeyObject', () => {
   });
 
   it('should set the right properties for the imported public key.', async (done) => {
-    const alg: any = { name: 'ECDH', namedCurve: 'K-256' };
-    let key: any = await (crypto.subtle.generateKey(alg, true, [ 'deriveBits' ]) as Promise<any>);
+    const alg: any = { name: 'ECDSA', namedCurve: 'K-256' };
+    let key: any = await (crypto.subtle.generateKey(alg, true, [ 'verify' ]) as Promise<any>);
     const jwkKey: any = await (crypto.subtle.exportKey('jwk', key.publicKey) as Promise<any>);
-    key = await (crypto.subtle.importKey('jwk', jwkKey, alg, true, [ 'deriveBits' ]) as Promise<any>);
+    key = await (crypto.subtle.importKey('jwk', jwkKey, alg, true, [ 'verify' ]) as Promise<any>);
     const keyObject: KeyObject = new KeyObject(KeyType.EC, key);
     expect(KeyType.EC).toBe(keyObject.keyType);
     expect(keyObject.isKeyPair).toBeFalsy();

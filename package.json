@@ -20,12 +20,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@peculiar/webcrypto": "^1.0.9",
     "base64url": "^3.0.1",
     "big-integer": "github:peterolson/BigInteger.js",
     "clone": "^2.1.2",
     "elliptic": "^6.4.1",
-    "install": "^0.12.2",
-    "node-webcrypto-ossl": "^1.0.39"
+    "install": "^0.12.2"
   },
   "devDependencies": {
     "@types/fetch-mock": "^7.2.3",
