@@ -4,10 +4,10 @@ import DidKey from '../lib/DidKey';
 import { KeyType } from '../lib/KeyType';
 import { KeyUse } from '../lib/KeyUse';
 import { KeyExport } from '../lib/KeyExport';
-import WebCrypto from 'node-webcrypto-ossl';
+import { Crypto } from '@peculiar/webcrypto';
 import bigInt from 'big-integer';
 
-const crypto = new WebCrypto();
+const crypto = new Crypto();
 
 describe('PairwiseKey', () => {
   it('should construct a new instance', () => {
@@ -18,7 +18,7 @@ describe('PairwiseKey', () => {
 
   it('should throw when generating key for unsupported key type.', async (done) => {
     const masterKey: Buffer = Buffer.alloc(32, 2);
-    const alg = { name: 'ECDSA', namedCurve: 'K-256', hash: { name: 'SHA-256' } };
+    const alg = { name: 'ECDSA', namedCurve: 'K-256', hash: 'SHA-256' };
     const key = new PairwiseKey('1234567890', 'www.peer.com');
     try {
       await key.generate(masterKey, crypto, alg, KeyType.Oct, KeyUse.Signature);
@@ -33,7 +33,7 @@ describe('PairwiseKey', () => {
   it('should throw when generating key for unsupported curve.', async (done) => {
     const masterKey: Buffer = Buffer.alloc(32, 1);
     const key = new PairwiseKey('1234567890', 'www.peer.com');
-    const alg = { name: 'ECDSA', namedCurve: 'X-256', hash: { name: 'SHA-256' } };
+    const alg = { name: 'ECDSA', namedCurve: 'X-256', hash: 'SHA-256' };
     try {
       await key.generate(masterKey, crypto, alg, KeyType.EC, KeyUse.Signature, true);
     } catch (error) {
@@ -45,7 +45,7 @@ describe('PairwiseKey', () => {
   it('should generate key pair for K-256.', async (done) => {
     const masterKey: Buffer = Buffer.alloc(32, 1);
     const key = new PairwiseKey('1234567890', 'www.peer.com');
-    const alg = { name: 'ECDSA', namedCurve: 'K-256', hash: { name: 'SHA-256' } };
+    const alg = { name: 'ECDSA', namedCurve: 'K-256', hash: 'SHA-256' };
     let didKey: DidKey = await key.generate(masterKey, crypto, alg, KeyType.EC, KeyUse.Signature, true);
     expect(didKey).toBeDefined();
     const jwk = await didKey.getJwkKey(KeyExport.Private);
@@ -92,7 +92,7 @@ describe('PairwiseKey', () => {
   it('should generate a key pair for signing', async (done) => {
     const masterKey: Buffer = Buffer.alloc(32, 1);
     const key = new PairwiseKey('1234567890', 'www.peer.com');
-    const alg = { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } };
+    const alg = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
     const didKey: DidKey = await key.generate(masterKey, crypto, alg, KeyType.RSA, KeyUse.Signature, true);
     expect(didKey).toBeDefined();
     expect(didKey.exportable).toBeTruthy();
@@ -106,7 +106,7 @@ describe('PairwiseKey', () => {
   it('should generate a non-exportable RSA key', async (done) => {
     const masterKey: Buffer = Buffer.alloc(32, 1);
     const key = new PairwiseKey('1234567890', 'www.peer.com');
-    const alg = { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } };
+    const alg = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
     const didKey: DidKey = await key.generate(masterKey, crypto, alg, KeyType.RSA, KeyUse.Signature, false);
     expect(didKey).toBeDefined();
     expect(didKey.exportable).toBeFalsy();
@@ -116,7 +116,7 @@ describe('PairwiseKey', () => {
   it('should generate a non-exportable elliptic curve key', async (done) => {
     const masterKey: Buffer = Buffer.alloc(32, 1);
     const key = new PairwiseKey('1234567890', 'www.peer.com');
-    const alg = { name: 'ECDSA', namedCurve: 'K-256', hash: { name: 'SHA-256' } };
+    const alg = { name: 'ECDSA', namedCurve: 'K-256', hash: 'SHA-256' };
     const didKey: DidKey = await key.generate(masterKey, crypto, alg, KeyType.EC, KeyUse.Signature, false);
     expect(didKey).toBeDefined();
     expect(didKey.exportable).toBeFalsy();

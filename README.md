@@ -76,3 +76,12 @@ Install the library into your project with npm:
 npm install @decentralized-identity/did-crypto-typescript
 ```
 
+## Crypto Dependancy
+
+This library uses @peculiar/webcrypto as base crypto library for nodejs. This library is still in an experimental stage and should for now not be used in production code.
+In the browser one can use the native window.crypto object supported in all modern browsers.
+
+## Supported algorithms
+The library supports the following algorithms for generating pairwise keys:
+RSA
+secp256k1
