@@ -1,12 +1,13 @@
 import DidKey from '../lib/DidKey';
 import { KeyExport } from '../lib';
-import SubtleCryptoElliptic from 'UserAgent-plugin-secp256k1';
+import { SubtleCryptoElliptic } from '@microsoft/useragent-plugin-secp256k1';
 
 const originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
-const crypto = new SubtleCryptoElliptic();
+const subtleCrypto = new SubtleCryptoElliptic();
+const crypto = { subtle: subtleCrypto };
 
 beforeEach(() => {
-  jasmine.DEFAULT_TIMEOUT_INTERVAL = 100000;
+  jasmine.DEFAULT_TIMEOUT_INTERVAL = 1000000;
 });
 
 afterEach(() => {
@@ -22,8 +23,7 @@ const supportedAlgorithms = [
   { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([0x01, 0x00, 0x01]), hash: { name: 'SHA-256' } },
   { name: 'ECDSA', namedCurve: 'P-256K', hash: { name: 'SHA-256' } }
 ];
-
-describe('DidKey in browser - RSA', () => {
+describe('DidKey in browser - hamc', () => {
   it('should sign/verify with a symmetric key.', async (done) => {
     const alg = supportedAlgorithms[0];
     console.log(`Algorithm: ${JSON.stringify(alg)}`);
@@ -47,7 +47,9 @@ describe('DidKey in browser - RSA', () => {
     expect(success).toEqual(true);
     done();
   });
+});
 
+describe('DidKey in browser - RSA', () => {
   it('should sign/verify with an RSA key.', async (done) => {
     const alg = supportedAlgorithms[1];
     console.log(`Algorithm: ${JSON.stringify(alg)}`);
@@ -121,7 +123,7 @@ describe('DidKey in browser - secp256k1', () => {
     done();
   });
 
-  it('should sign/verify with a pairwise EC key.', async (done) => {
+  fit('should sign/verify with a pairwise EC key.', async (done) => {
     const alg = supportedAlgorithms[2];
     console.log(`Algorithm: ${JSON.stringify(alg)}`);
     const didKey = new DidKey(crypto, alg, null, true);

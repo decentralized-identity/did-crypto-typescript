@@ -130,7 +130,7 @@ export default class PairwiseKey {
    * @param data Data to sign
    */
   private async generateHashForPrime (crypto: any, _inx: number, key: Buffer, data: Buffer): Promise<Buffer> {
-    const alg = { name: 'hmac', hash: { name: 'SHA-512' } };
+    const alg = { name: 'hmac', hash: 'SHA-512' };
     const deterministicNumber = new DidKey(crypto, alg, key, true);
     await deterministicNumber.getJwkKey(KeyExport.Secret);
     const signature = await deterministicNumber.sign(data);
@@ -268,7 +268,7 @@ export default class PairwiseKey {
     exportable: boolean): Promise<DidKey> {
 
     // Generate peer key
-    const alg = { name: 'hmac', hash: { name: 'SHA-256' } };
+    const alg = { name: 'hmac', hash: 'SHA-256' };
     const hashDidKey = new DidKey(crypto, alg, didMasterKey, true);
     const signature: any = await hashDidKey.sign(Buffer.from(this._peerId));
 

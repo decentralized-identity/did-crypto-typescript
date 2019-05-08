@@ -1,6 +1,6 @@
 
 import base64url from 'base64url';
-import WebCrypto from 'node-webcrypto-ossl';
+import { Crypto } from '@peculiar/webcrypto';
 import DidKey from '../lib/DidKey';
 import { KeyExport } from '../lib/KeyExport';
 import KeyObject from '../lib/KeyObject';
@@ -16,7 +16,7 @@ class CryptoObject {
   public crypto: any = null;
 }
 
-const webCryptoClass = new WebCrypto();
+const webCryptoClass = new Crypto();
 
 const crytoObjects: CryptoObject[] = [ { name: 'node-webcrypto-ossl', crypto: webCryptoClass } ];
 
@@ -33,6 +33,55 @@ describe('DidKey', () => {
 
   afterEach(() => {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+  });
+
+  describe('utility tests', () => {
+    it('should set the right properties for mapping jwa.', async (done) => {
+      let alg = { name: 'hmac', hash: 'SHA-256' };
+      let didKey: any = new DidKey(webCryptoClass, alg, Buffer.from(sampleKey), true);
+      let jwk: any = await didKey.getJwkKey(KeyExport.Secret);
+      expect(didKey.getJoseAlg(alg, jwk).alg).toEqual('hs256');
+
+      alg = { name: 'hmac', hash: 'SHA-512' };
+      didKey = new DidKey(webCryptoClass, alg, Buffer.from(sampleKey), true);
+      jwk = await didKey.getJwkKey(KeyExport.Secret);
+      expect(didKey.getJoseAlg(alg, jwk).alg).toEqual('hs512');
+
+      alg = { name: 'hmac', hash: 'SHA-756' };
+      didKey = new DidKey(webCryptoClass, alg, Buffer.from(sampleKey), true);
+      jwk = await didKey.getJwkKey(KeyExport.Secret);
+      let throws = false;
+      try {
+        didKey.getJoseAlg(alg, jwk);
+      } catch (err) {
+        expect(err.message).toEqual(`Algoritm ${JSON.stringify(alg)} is not supported`);
+        throws = true;
+      }
+      expect(throws).toBe(true);
+
+      alg = { name: 'rsassa-pkcs1-v1_5', hash: 'SHA-256' };
+      didKey = new DidKey(webCryptoClass, alg, Buffer.from(sampleKey), true);
+      jwk = await didKey.getJwkKey(KeyExport.Public);
+      expect(didKey.getJoseAlg(alg, jwk).alg).toEqual('RS256');
+
+      alg = { name: 'rsassa-pkcs1-v1_5', hash: 'SHA-512' };
+      didKey = new DidKey(webCryptoClass, alg, Buffer.from(sampleKey), true);
+      jwk = await didKey.getJwkKey(KeyExport.Public);
+      expect(didKey.getJoseAlg(alg, jwk).alg).toEqual('RS512');
+
+      alg = { name: 'rsassa-pkcs1-v1_5', hash: 'SHA-756' };
+      didKey = new DidKey(webCryptoClass, alg, Buffer.from(sampleKey), true);
+      jwk = await didKey.getJwkKey(KeyExport.Secret);
+      throws = false;
+      try {
+        didKey.getJoseAlg(alg, jwk);
+      } catch (err) {
+        expect(err.message).toEqual(`Algoritm ${JSON.stringify(alg)} is not supported`);
+        throws = true;
+      }
+      expect(throws).toBe(true);
+      done();
+    });
   });
 
   describe('constructed with an Octet key', () => {

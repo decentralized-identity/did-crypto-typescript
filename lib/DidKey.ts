@@ -155,6 +155,10 @@ export default class DidKey {
     jwk = DidKey.normalizeJwk(jwk);
     const operations = [KeyOperation.Sign];
     jwk.key_ops = operations;
+    if (!jwk.alg) {
+      jwk = this.getJoseAlg(this._algorithm, jwk);
+    }
+
     const alg = DidKey.normalizeAlgorithm(this._algorithm);
     const keyObject: any = await this._crypto.subtle.importKey(
       'jwk',
@@ -434,6 +438,42 @@ export default class DidKey {
     if (!jwk.kid) {
       jwk.kid = TEMPORARY_KID;
     }
+    if (jwk.kty === 'octet') {
+      jwk.kty = 'oct';
+    }
     return jwk;
+  }
+
+  /**
+   * Map the W3C algorithm to JWA format
+   * @param alg Ma
+   */
+  private getJoseAlg (alg: any, jwk: any): any {
+    switch (alg.name.toLowerCase()) {
+      case 'hmac':
+        switch (alg.hash.toLowerCase()) {
+          case 'sha-256':
+            jwk.alg = 'hs256';
+            return jwk;
+          case 'sha-512':
+            jwk.alg = 'hs512';
+            return jwk;
+        }
+        break;
+      case 'rsassa-pkcs1-v1_5':
+        switch (alg.hash.toLowerCase()) {
+          case 'sha-256':
+            jwk.alg = 'RS256';
+            return jwk;
+          case 'sha-512':
+            jwk.alg = 'RS512';
+            return jwk;
+        }
+        break;
+      case 'ecdsa':
+        return jwk;
+    }
+
+    throw new Error(`Algoritm ${JSON.stringify(alg)} is not supported`);
   }
 }

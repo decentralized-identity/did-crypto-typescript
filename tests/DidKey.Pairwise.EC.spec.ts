@@ -1,10 +1,10 @@
 
-import WebCrypto from 'node-webcrypto-ossl';
+import { Crypto } from '@peculiar/webcrypto';
 import DidKey from '../lib/DidKey';
 import { KeyExport } from '../lib/KeyExport';
 
 const pairwiseKeys = require('./Pairwise.EC.json');
-const crypto = new WebCrypto();
+const crypto = new Crypto();
 const seed = Buffer.from('xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi');
 
 describe('DidKey - elliptic curve pairwise keys', () => {
@@ -19,7 +19,7 @@ describe('DidKey - elliptic curve pairwise keys', () => {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
   });
 
-  it(`should throw when generating keys using an unsupported key type of 'oct'`, async (done) => {
+  it(`'`, async (done) => {
     const pwDidKey: DidKey = new DidKey(crypto, { name: 'hmac', hash: 'SHA-256' }, null);
     await pwDidKey.generatePairwise(Buffer.from('abcdefg'), 'did:test:something', 'did:test:peer')
     .catch((err) => {
