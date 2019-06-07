@@ -7,7 +7,7 @@
     "build": "tsc",
     "test": "nyc jasmine-ts --config=./tests/jasmine.json",
     "test-browser": "karma start karma.config.js",
-    "debug-browser": "karma start karma.config.js  --browsers Chrome_with_debugging  --single-run true",
+    "debug-browser": "karma start karma.config.js  --browsers Chrome_with_debugging  --single-run false",
     "lint": "tslint --fix --project .",
     "check-lint": "tslint --project ."
   },
@@ -20,6 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@microsoft/useragent-plugin-secp256k1": "^1.0.0",
     "@peculiar/webcrypto": "^1.0.9",
     "base64url": "^3.0.1",
     "big-integer": "github:peterolson/BigInteger.js",
@@ -42,15 +43,15 @@
     "karma-jasmine": "^2.0.1",
     "karma-typescript-preprocessor2": "^1.2.1",
     "karma-webpack": "^2.0.3",
-    "awesome-typescript-loader": "^3.1.2",
-    "ts-loader": "^2.0.2",
-    "webpack": "^2.3.0",
     "node-fetch": "^2.3.0",
     "nyc": "^14.0.0",
     "source-map-support": "^0.5.9",
+    "ts-loader": "^2.0.2",
+    "awesome-typescript-loader": "^5.2.1",
     "tslint": "^5.11.0",
     "tslint-config-standard": "^8.0.1",
-    "typescript": "^3.0.3"
+    "typescript": "^3.0.3",
+    "webpack": "^4.30.0"
   },
   "nyc": {
     "extension": [
